@@ -29,6 +29,16 @@ var squareToIndex = function(square) {
     return file + 16 * rank;
 };
 
+var getSquare = function(file, rank) {
+    return "abcdefgh".charAt(file) + "12345678".charAt(rank);
+};
+
+var indexToSquare = function(index) {
+    let file = index & 0x0F;
+    let rank = (index & 0xF0) >> 4;
+    return getSquare(file, rank);
+};
+
 var isWhite = function(index) {
     if (index < 0) return false;
     let file = index & 0x0F;
@@ -142,8 +152,311 @@ var parseFen = function(fen) {
 };
 
 var generateMoves = function(position) {
-    console.log('Not implemented');
-    return [];
+    let simResult = [];
+    let takeResult = [];
+
+    function appendMoves(destination, moves, separator) {
+        moves.forEach(
+            function (move) {
+                var squares = move.map(indexToSquare);
+                destination.push(squares.join(separator));
+            }
+        );
+    }
+
+    for (let rank=0; rank<8; ++rank)
+    for (let file=0; file<8; ++file) {
+        if ((rank ^ file) & 1) {
+            continue;
+        }
+
+        let index = file + 16*rank;
+        let piece = position.board[index];
+        if (typeof(piece) != 'string') {
+            continue;
+        }
+
+        let isActiveWhite = position.active == 'WHITE';
+        let isPieceWhite = piece == 'w' || piece == 'W';
+        if (isActiveWhite ^ isPieceWhite) {
+            continue;
+        }
+
+        if (piece == 'w' || piece == 'b') {
+            let simMoves = moveSimple(position, index);
+            appendMoves(simResult, simMoves, '-');
+            let takeMoves = takeSimple(position, index);
+            appendMoves(takeResult, takeMoves, ':');
+        }
+
+        if (piece == 'W' || piece == 'B') {
+            let simMoves = moveMam(position, index);
+            appendMoves(simResult, simMoves, '-');
+            let takeMoves = takeMam(position, index);
+            appendMoves(takeResult, takeMoves, ':');
+        }
+    }
+
+    return takeResult.length > 0 ? takeResult : simResult;
+};
+
+var isPromotion = function(active, index) {
+    if (active == 'WHITE') {
+        return index >= 7*16;
+    } else {
+        return index < 16;
+    }
+};
+
+var newTry = function(index, delta) {
+    let result = new Object();
+    result.index = index;
+    result.delta = delta;
+    return result;
+};
+
+var newMurder = function(start, index, delta) {
+    let result = new Object();
+    result.start = start;
+    result.index = index;
+    result.delta = delta;
+    result.next = index + delta;
+    return result;
+};
+
+var addKilled = function(killed, corpse) {
+    let result = killed.slice(0);
+    result[corpse] = 1;
+    return result;
+};
+
+var getOrthogonal = function(delta) {
+    if (delta == 15 || delta == -15) return 17;
+    if (delta == 17 || delta == -17) return 15;
+    throw 'Assertion fails!';
+};
+
+var moveSimple = function(position, oldIndex) {
+    let result = [];
+    let sign = position.active == 'WHITE' ? +1 : -1;
+    [15, 17].forEach(
+        function (delta) {
+            let newIndex = oldIndex + sign * delta;
+            if (newIndex & 0x88) return;
+            let square = position.board[newIndex];
+            if (typeof(square) == 'string') return;
+            result.push([oldIndex, newIndex]);
+        }
+    );
+    return result;
+};
+
+var moveMam = function(position, oldIndex) {
+    let result = [];
+    [-17, -15, 15, 17].forEach(
+        function (delta) {
+            let newIndex = oldIndex;
+            for (;;) {
+                newIndex += delta;
+                if (newIndex & 0x88) return;
+                let square = position.board[newIndex];
+                if (typeof(square) == 'string') return;
+                result.push([oldIndex, newIndex]);
+            }
+        }
+    );
+    return result;
+};
+
+var takeSimple = function(position, index) {
+    let saved = position.board[index];
+    delete position.board[index];
+
+    let result = [];
+    [-17, -15, 15, 17].forEach(
+        function (delta) {
+            let enemy = trySimTake(position, index, delta, []);
+            if (enemy == -1) return;
+            let next = enemy + delta;
+
+            let killed = [];
+            killed[enemy] = 1;
+            if (isPromotion(position.active, next)) {
+                recursiveMamTake(position, next, delta, killed).forEach(
+                    function (move) {
+                        return result.push([index].concat(move))
+                    }
+                );
+            } else {
+                recursiveSimTake(position, next, delta, killed).forEach(
+                    function (move) {
+                        return result.push([index].concat(move))
+                    }
+                );
+            }
+        }
+    );
+
+    position.board[index] = saved;
+    return result;
+};
+
+
+var trySimTake = function(position, index, delta, killed) {
+    let me1 = position.active == 'WHITE' ? 'W' : 'B';
+    let me2 = position.active == 'WHITE' ? 'w' : 'b';
+
+    let enemy = index + delta;
+    let next = enemy + delta;
+
+    if (next & 0x88) return -1;
+    if (typeof(position.board[enemy]) == 'undefined') return -1;
+    if (typeof(position.board[next]) != 'undefined') return -1;
+    if (typeof(killed[enemy]) != 'undefined') return -1;
+
+    let square = position.board[enemy];
+    if (square == me1 || square == me2) return -1;
+
+    return enemy;
+};
+
+var recursiveSimTake = function(position, index, delta, killed) {
+    let tryList = [];
+    [-17, -15, 15, 17].forEach(
+        function (nextDelta) {
+            if (nextDelta != -delta) {
+                tryList.push(newTry(index, nextDelta));
+            }
+        }
+    );
+
+    let murderList = [];
+    tryList.forEach(
+        function (takeTry) {
+            var enemy = trySimTake(position, takeTry.index, takeTry.delta, killed);
+            if (enemy < 0) return;
+            murderList.push(newMurder(takeTry.index, enemy, takeTry.delta));
+        }
+    );
+
+    if (murderList.length == 0) {
+        return [[index]];
+    }
+
+    let result = [];
+    murderList.forEach(
+        function (murder) {
+            let newKilled = addKilled(killed, murder.index);
+            if (isPromotion(position.active, murder.next)) {
+                recursiveMamTake(position, murder.next, murder.delta, newKilled).forEach(
+                    function (move) {
+                        result.push([murder.start].concat(move));
+                    }
+                );
+            } else {
+                recursiveSimTake(position, murder.next, murder.delta, newKilled).forEach(
+                    function (move) {
+                        result.push([murder.start].concat(move));
+                    }
+                );
+            }
+        }
+    );
+
+    return result;
+};
+
+var takeMam = function(position, index) {
+    let saved = position.board[index];
+    delete position.board[index];
+
+    let result = [];
+    [-17, -15, 15, 17].forEach(
+        function (delta) {
+            let enemy = tryMamTake(position, index + delta, delta, []);
+            if (enemy == -1) return;
+            let next = enemy + delta;
+
+            let killed = [];
+            killed[enemy] = 1;
+            recursiveMamTake(position, next, delta, killed).forEach(
+                function (move) {
+                    return result.push([index].concat(move))
+                }
+            );
+        }
+    );
+
+    position.board[index] = saved;
+    return result;
+};
+
+var tryMamTake = function(position, index, delta, killed) {
+    let me1 = position.active == 'WHITE' ? 'W' : 'B';
+    let me2 = position.active == 'WHITE' ? 'w' : 'b';
+
+    for (;;) {
+        if (index & 0x88) return -1;
+        if (typeof(killed[index]) != 'undefined') return -1;
+        let square = position.board[index];
+        if (typeof(square) == 'string') break;
+        index += delta;
+    }
+
+    let square = position.board[index];
+    if (square == me1 || square == me2) return -1
+
+    let next = index + delta;
+    if (next & 0x88) return -1;
+    if (killed[next]) return -1;
+    let nextSquare = position.board[next];
+    if (typeof(nextSquare) == 'string') return -1;
+
+    return index;
+};
+
+var recursiveMamTake = function(position, index, delta, killed) {
+    let result = [];
+
+    let tryList = [newTry(index, delta)];
+    let orthogonal = getOrthogonal(delta);
+
+    for (;;) {
+        if (index & 0x88) break;
+        let square = position.board[index];
+        if (typeof(square) == 'string') break;
+        result.push([index]);
+        tryList.push(newTry(index, +orthogonal))
+        tryList.push(newTry(index, -orthogonal))
+        index += delta;
+    }
+
+    let murderList = [];
+    tryList.forEach(
+        function (takeTry) {
+            let enemy = tryMamTake(position, takeTry.index, takeTry.delta, killed);
+            if (enemy < 0) return;
+            murderList.push(newMurder(takeTry.index, enemy, takeTry.delta));
+        }
+    );
+
+    if (murderList.length == 0) {
+        return result;
+    }
+
+    result = [];
+    murderList.forEach(
+        function (murder) {
+            let newKilled = addKilled(killed, murder.index);
+            recursiveMamTake(position, murder.next, murder.delta, newKilled).forEach(
+                function (move) {
+                    result.push([murder.start].concat(move));
+                }
+            );
+        }
+    );
+
+    return result;
 };
 
 initPublic(this);
