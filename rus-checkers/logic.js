@@ -3,6 +3,8 @@ var yooRusCheckersLogic = new function() {
 var initPublic = function(obj) {
     obj.parseFen = parseFen;
     obj.generateMoves = generateMoves;
+    obj.indexToSquare = indexToSquare;
+    obj.squareToIndex = squareToIndex;
 };
 
 var squareToIndex = function(square) {

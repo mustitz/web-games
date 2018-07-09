@@ -6,6 +6,8 @@ var yooRusCheckersConfig = {
     fieldColorBlack : '#888888',
     pieceDir        : './rus-checkers/img/',
     pieceImages     : { 'w': 'E3.png', 'W': 'E2.png', 'b': 'E1.png', 'B': 'E0.png' },
+    completeMove    : './rus-checkers/img/lime-border.png',
+    partialMove     : './rus-checkers/img/blue-border.png',
     copyright       : "mustitz@gmail.com"
 };
 
@@ -47,6 +49,9 @@ var getBoardIndex = function(file, rank, isRotated) {
 var refresh = function(div) {
     yooLib.clearElement(div);
     div.boardTds = [];
+    div.moveStage = [];
+    div.partial = [];
+    div.complete = [];
 
     if (div.isMouseDownHandler) {
         yooLib.removeHandler(div, 'mousedown', tdMouseDown);
@@ -126,10 +131,84 @@ var tdMouseDown = function(e) {
     moveList = logic.generateMoves(position);
     if (moveList.length == 0) return;
 
-    console.log('Not implemented');
-    moveList.forEach(function(move) {
-        console.log(move);
+    let moveStage = div.moveStage.slice(0);
+    moveStage.push(td.index);
+
+    let stageStr = moveStage.map(logic.indexToSquare).join(':');
+    let movesFromSquare = [];
+    moveList.forEach(
+        function(move) {
+            if (move.startsWith(stageStr)) {
+                movesFromSquare.push(move);
+            }
+        }
+    );
+    if (movesFromSquare.length == 0) return;
+
+    div.moveStage = moveStage;
+
+    let partial = [];
+    let complete = [];
+    let middle = [];
+    let last = [];
+    let fast = [];
+
+    movesFromSquare.forEach(function(move) {
+        let separator = move.charAt(2);
+        let squares = move.split(separator);
+
+        let stage = div.moveStage.length;
+        if (typeof(squares[stage]) == 'string') {
+            let sqIndex = logic.squareToIndex(squares[stage]);
+            if (squares.length == stage + 1) {
+                last[sqIndex] = move;
+            } else {
+                middle[sqIndex] = move;
+            }
+        }
+
+        let lastIndex = squares.length - 1;
+        let sqIndex = logic.squareToIndex(squares[lastIndex]);
+        if (typeof(fast[sqIndex]) != 'string') {
+            fast[sqIndex] = move;
+        } else {
+            fast[sqIndex] = '-';
+        }
     });
+
+    last.forEach(function(move, square) {
+        complete[square] = move;
+        let img = document.createElement('IMG');
+        img.src = cfg.completeMove;
+        div.boardTds[square].innerDiv.appendChild(img);
+    });
+
+    middle.forEach(function(move, square) {
+        let ignored = typeof(last[square]) == 'string';
+        if (ignored) return;
+
+        partial[square] = move;
+        let img = document.createElement('IMG');
+        img.src = cfg.partialMove;
+        div.boardTds[square].innerDiv.appendChild(img);
+    });
+
+    fast.forEach(function(move, square) {
+        let ignored = 0
+            || move == '-'
+            || typeof(last[square]) == 'string'
+            || typeof(middle[square]) == 'string'
+        ;
+        if (ignored) return;
+
+        complete[square] = move;
+        let img = document.createElement('IMG');
+        img.src = cfg.completeMove;
+        div.boardTds[square].innerDiv.appendChild(img);
+    });
+
+    div.partial = partial;
+    div.complete = complete;
 };
 
 initPublic(this);
