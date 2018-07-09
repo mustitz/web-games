@@ -238,6 +238,7 @@ var tdMouseDown = function(e) {
     div.dragLastX = e.clientX;
     div.dragLastY = e.clientY;
     yooLib.addHandler(div, 'mousemove', tdMouseMove);
+    yooLib.addHandler(div, 'mouseup', tdMouseUp);
 };
 
 var tdMouseMove = function(e) {
@@ -256,6 +257,48 @@ var tdMouseMove = function(e) {
     div.dragLastX = e.clientX;
     div.dragLastY = e.clientY;
     return div;
+};
+
+var tdMouseUp = function(e) {
+    let div = tdMouseMove(e);
+    if (typeof(div) == 'undefined') return;
+
+    let divOffset = yooLib.calculateAbsoluteOffset(div);
+    let dragDivOffset = yooLib.calculateAbsoluteOffset(div.dragDiv);
+    let divMouseLeft = dragDivOffset.left - divOffset.left;
+    let divMouseTop = dragDivOffset.top - divOffset.top;
+    let x = Math.round(divMouseLeft / cfg.bitmapWidth);
+    let y = Math.round(divMouseTop / cfg.bitmapHeight);
+    let file = x;
+    let rank = 7 - y;
+    let index = getBoardIndex(file, rank, div.rotated);
+
+    yooLib.removeHandler(div, 'mousemove', tdMouseMove);
+    yooLib.removeHandler(div, 'mouseup', tdMouseUp);
+    div.dragDiv.remove();
+    delete div.dragTd;
+    delete div.dragDiv;
+    delete div.dragLastX;
+    delete div.dragLastY;
+
+    let partialMove = div.partial[index];
+    let isPartial = typeof(partialMove) == 'string';
+    if (isPartial) {
+        div.boardTds[index].innerDiv.style.backgroundImage = div.activePiece;
+        div.boardTds.forEach(function(td) {
+            yooLib.clearElement(td.innerDiv);
+        });
+        return;
+    }
+
+    let completeMove = div.complete[index];
+    let isComplete = typeof(completeMove) == 'string';
+    if (isComplete) {
+        console.log('Not implemented');
+        console.log(move);
+    }
+
+    refresh(div);
 };
 
 initPublic(this);
