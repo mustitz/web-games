@@ -3,6 +3,7 @@ var yooRusCheckersLogic = new function() {
 var initPublic = function(obj) {
     obj.parseFen = parseFen;
     obj.generateMoves = generateMoves;
+    obj.doMove = doMove;
     obj.indexToSquare = indexToSquare;
     obj.squareToIndex = squareToIndex;
 };
@@ -458,6 +459,84 @@ var recursiveMamTake = function(position, index, delta, killed) {
         }
     );
 
+    return result;
+};
+
+var doMove = function(position, move) {
+    if (typeof(move) != 'string') return;
+    let sim = move.split('-');
+    if (sim.length > 1) {
+        return doSimMove(position, sim);
+    }
+    let take = move.split(':');
+    if (take.length > 1) {
+        return doTakeMove(position, take);
+    }
+    throw 'Wrong move ' + move;
+};
+
+var doSimMove = function(position, sim) {
+    let indexes = sim.map(squareToIndex);
+    if (indexes.length != 2) {
+        throw 'Wrong simple move length';
+    }
+
+    let from = indexes[0];
+    let to = indexes[1];
+    let piece = position.board[from];
+    if (isPromotion(position.active, to)) {
+        piece = piece.toUpperCase(piece);
+    }
+
+    let result = Object.assign({}, position);
+    delete result.board[from];
+    result.board[to] = piece;
+    result.active = position.active == 'WHITE' ? 'BLACK' : 'WHITE';
+    return result;
+};
+
+var getDelta = function(index1, index2) {
+    let delta = index2 - index1;
+    let sign = delta < 0 ? -1 : +1;
+    delta *= sign;
+    if (delta % 15 == 0) return sign * 15;
+    if (delta % 17 == 0) return sign * 17;
+    return 0;
+};
+
+var doTakeMove = function(position, take) {
+    let indexes = take.map(squareToIndex);
+    let from = indexes[0];
+    let to = indexes.slice(-1)[0];
+
+    let wasPromotion = false;
+    indexes.forEach(
+        function (index) {
+            if (isPromotion(position.active, index)) {
+                wasPromotion = true;
+            }
+        }
+    );
+
+    let piece = position.board[from];
+    if (wasPromotion) {
+        piece = piece.toUpperCase(piece);
+    }
+
+    let result = Object.assign({}, position);
+    delete result.board[from];
+
+    for (let i=0; i < indexes.length - 1; ++i) {
+        let i1 = indexes[i];
+        let i2 = indexes[i+1];
+        let delta = getDelta(indexes[i], indexes[i+1]);
+        for (let j=i1+delta; j!=i2; j+=delta) {
+            delete result.board[j];
+        }
+    }
+
+    result.board[to] = piece;
+    result.active = position.active == 'WHITE' ? 'BLACK' : 'WHITE';
     return result;
 };
 

@@ -294,8 +294,10 @@ var tdMouseUp = function(e) {
     let completeMove = div.complete[index];
     let isComplete = typeof(completeMove) == 'string';
     if (isComplete) {
-        console.log('Not implemented');
-        console.log(move);
+        let position = logic.doMove(div.position, completeMove);
+        if (typeof(position) == 'object') {
+            div.position = position;
+        }
     }
 
     refresh(div);
