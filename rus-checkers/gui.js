@@ -48,6 +48,11 @@ var refresh = function(div) {
     yooLib.clearElement(div);
     div.boardTds = [];
 
+    if (div.isMouseDownHandler) {
+        yooLib.removeHandler(div, 'mousedown', tdMouseDown);
+        div.isMouseDownHandler = false;
+    }
+
     let table = document.createElement('TABLE');
     table.style.padding = '0px';
     table.style.borderSpacing = '0px';
@@ -101,6 +106,30 @@ var refresh = function(div) {
     table.appendChild(tbody);
 
     div.appendChild(table);
+
+    if (!div.isMouseDownHandler) {
+        yooLib.addHandler(div, 'mousedown', tdMouseDown);
+        div.isMouseDownHandler = true;
+    }
+};
+
+var tdMouseDown = function(e) {
+    let td = yooLib.findParent(yooLib.getTarget(e), 'TD');
+    if (td == null) return;
+    if (typeof(td.index) == 'undefined') return;
+
+    yooLib.preventDefault(e);
+
+    let div = td.div;
+    let position = div.position;
+
+    moveList = logic.generateMoves(position);
+    if (moveList.length == 0) return;
+
+    console.log('Not implemented');
+    moveList.forEach(function(move) {
+        console.log(move);
+    });
 };
 
 initPublic(this);

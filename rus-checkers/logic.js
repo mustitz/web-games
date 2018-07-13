@@ -2,6 +2,7 @@ var yooRusCheckersLogic = new function() {
 
 var initPublic = function(obj) {
     obj.parseFen = parseFen;
+    obj.generateMoves = generateMoves;
 };
 
 var squareToIndex = function(square) {
@@ -138,6 +139,11 @@ var parseFen = function(fen) {
     }
 
     return retValue;
+};
+
+var generateMoves = function(position) {
+    console.log('Not implemented');
+    return [];
 };
 
 initPublic(this);
