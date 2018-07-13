@@ -58,6 +58,15 @@ var refresh = function(div) {
         div.isMouseDownHandler = false;
     }
 
+    if (typeof(div.dragDiv) !='undefined') {
+        div.dragDiv.remove();
+    }
+
+    delete div.dragTd;
+    delete div.dragDiv;
+    delete div.dragLastX;
+    delete div.dragLastY;
+
     let table = document.createElement('TABLE');
     table.style.padding = '0px';
     table.style.borderSpacing = '0px';
@@ -209,6 +218,44 @@ var tdMouseDown = function(e) {
 
     div.partial = partial;
     div.complete = complete;
+
+    let offset = yooLib.calculateAbsoluteOffset(td);
+    let imgDiv = document.createElement('DIV');
+    imgDiv.style.position = 'absolute';
+    imgDiv.style.left = offset.left + 'px';
+    imgDiv.style.top = offset.top + 'px';
+    imgDiv.style.width = cfg.bitmapWidth + 'px';
+    imgDiv.style.height = cfg.bitmapHeight + 'px';
+    imgDiv.style.backgroundImage = td.innerDiv.style.backgroundImage;
+    imgDiv.zIndex = 10;
+
+    div.activePiece = td.innerDiv.style.backgroundImage;
+    td.innerDiv.style.backgroundImage = '';
+    div.appendChild(imgDiv);
+
+    div.dragTd = td;
+    div.dragDiv = imgDiv;
+    div.dragLastX = e.clientX;
+    div.dragLastY = e.clientY;
+    yooLib.addHandler(div, 'mousemove', tdMouseMove);
+};
+
+var tdMouseMove = function(e) {
+    yooLib.preventDefault(e);
+
+    let node = yooLib.getTarget(e);
+    for (;;) {
+        node = yooLib.findParent(node, 'DIV');
+        if (typeof(node) == 'undefined') return node;
+        if (typeof(node.dragTd) != 'undefined') break;
+        node = yooLib.parentNode(node);
+    }
+
+    let div = node;
+    yooLib.move(div.dragDiv, e.clientX - div.dragLastX, e.clientY - div.dragLastY);
+    div.dragLastX = e.clientX;
+    div.dragLastY = e.clientY;
+    return div;
 };
 
 initPublic(this);
