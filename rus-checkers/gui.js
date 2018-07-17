@@ -34,6 +34,7 @@ var init = function(args) {
     let div = yooLib.$(args['divId']);
     div.rotated = args['rotated'] ? 1 : 0;
     div.tag = args['tag'];
+    div.viewOnly = args['viewOnly'];
     div.position = position;
     refresh(div);
 };
@@ -121,9 +122,11 @@ var refresh = function(div) {
 
     div.appendChild(table);
 
-    if (!div.isMouseDownHandler) {
-        yooLib.addHandler(div, 'mousedown', tdMouseDown);
-        div.isMouseDownHandler = true;
+    if (!div.viewOnly) {
+        if (!div.isMouseDownHandler) {
+            yooLib.addHandler(div, 'mousedown', tdMouseDown);
+            div.isMouseDownHandler = true;
+        }
     }
 };
 
