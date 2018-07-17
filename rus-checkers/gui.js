@@ -35,6 +35,7 @@ var init = function(args) {
     div.rotated = args['rotated'] ? 1 : 0;
     div.tag = args['tag'];
     div.viewOnly = args['viewOnly'];
+    div.onMove = args['onMove'];
     div.position = position;
     refresh(div);
 };
@@ -299,6 +300,10 @@ var tdMouseUp = function(e) {
     if (isComplete) {
         let position = logic.doMove(div.position, completeMove);
         if (typeof(position) == 'object') {
+            if (typeof(div.onMove) == 'function') {
+                let fen = logic.buildFen(position);
+                div.onMove(div, completeMove, fen);
+            }
             div.position = position;
         }
     }

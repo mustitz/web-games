@@ -2,6 +2,7 @@ var yooRusCheckersLogic = new function() {
 
 var initPublic = function(obj) {
     obj.parseFen = parseFen;
+    obj.buildFen = buildFen;
     obj.generateMoves = generateMoves;
     obj.doMove = doMove;
     obj.indexToSquare = indexToSquare;
@@ -201,6 +202,11 @@ var generateMoves = function(position) {
     }
 
     return takeResult.length > 0 ? takeResult : simResult;
+};
+
+var buildFen = function(position) {
+    console.log('Not implemented');
+    return '???';
 };
 
 var isPromotion = function(active, index) {
