@@ -205,8 +205,34 @@ var generateMoves = function(position) {
 };
 
 var buildFen = function(position) {
-    console.log('Not implemented');
-    return '???';
+    let parts = [];
+    if (position.active == 'WHITE') {
+        parts.push('W');
+    }
+    if (position.active == 'BLACK') {
+        parts.push('B');
+    }
+    if (parts.length != 1) {
+        throw 'Invalid position object, wrong active value';
+    }
+
+    let white = [];
+    let black = [];
+    position.board.forEach(
+        function (value, index) {
+            let square = indexToSquare(index);
+            switch (value) {
+                case 'W': white.push('K' + square); break;
+                case 'w': white.push(square); break;
+                case 'B': black.push('K' + square); break;
+                case 'b': black.push(square); break;
+            }
+        }
+    );
+
+    parts.push('W' + white.join(','));
+    parts.push('B' + black.join(','));
+    return parts.join(':');
 };
 
 var isPromotion = function(active, index) {
