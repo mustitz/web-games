@@ -81,14 +81,14 @@ var parseFen = function(fen) {
     }
 
     ch = skipSpaces();
+    if (ch == '') {
+        return retValue;
+    }
     if (ch != ':') {
         return 'Parse FEN error: Colon after active side expected.';
     }
 
     ch = skipSpaces();
-    if (fenIndex < 0) {
-        return 'Piece color is expected, but EOL was found.';
-    }
 
     let filled = [];
     filled['WHITE'] = 0;
@@ -103,6 +103,8 @@ var parseFen = function(fen) {
             case 'B':
                 current = 'BLACK';
                 break;
+            case '':
+                return retValue;
             default:
                 return 'Invalid piece color only W or B is supported.';
         }
@@ -113,7 +115,8 @@ var parseFen = function(fen) {
         filled[current] = 1;
 
         for (;;) {
-            let piece = current == 'WHITE' ? 'w' : 'b';
+            let simple = current == 'WHITE' ? 'w' : 'b';
+            let piece = simple;
 
             let square = function() {
                 let ch = skipSpaces();
@@ -125,6 +128,9 @@ var parseFen = function(fen) {
                 }
             }();
 
+            if (square == '' && piece == simple) {
+                return retValue;
+            }
             let index = squareToIndex(square);
             if (!isBlack(index)) {
                 return 'Black square string expected';
@@ -137,22 +143,14 @@ var parseFen = function(fen) {
             }
         }
 
-        if (filled['WHITE'] == 1 && filled['BLACK'] == 1) {
-            break;
+        if (ch == '') {
+            return retValue;
         }
-
         if (ch != ':') {
             return 'Colon expected.';
         }
         ch = skipSpaces();
     }
-
-    ch = skipSpaces();
-    if (fenIndex < fen.length) {
-        return 'Some garbarge after valid FEN';
-    }
-
-    return retValue;
 };
 
 var generateMoves = function(position) {
