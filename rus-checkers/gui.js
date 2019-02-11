@@ -57,6 +57,7 @@ var refresh = function(div) {
 
     if (div.isMouseDownHandler) {
         yooLib.removeHandler(div, 'mousedown', tdMouseDown);
+        yooLib.removeHandler(div, 'touchstart', tdMouseDown);
         div.isMouseDownHandler = false;
     }
 
@@ -126,6 +127,7 @@ var refresh = function(div) {
     if (!div.viewOnly) {
         if (!div.isMouseDownHandler) {
             yooLib.addHandler(div, 'mousedown', tdMouseDown);
+            yooLib.addHandler(div, 'touchstart', tdMouseDown);
             div.isMouseDownHandler = true;
         }
     }
@@ -242,7 +244,9 @@ var tdMouseDown = function(e) {
     div.dragLastX = e.clientX;
     div.dragLastY = e.clientY;
     yooLib.addHandler(div, 'mousemove', tdMouseMove);
+    yooLib.addHandler(div, 'touchmove', tdMouseMove);
     yooLib.addHandler(div, 'mouseup', tdMouseUp);
+    yooLib.addHandler(div, 'touchend', tdMouseUp);
 };
 
 var tdMouseMove = function(e) {
@@ -254,6 +258,10 @@ var tdMouseMove = function(e) {
         if (typeof(node) == 'undefined') return node;
         if (typeof(node.dragTd) != 'undefined') break;
         node = yooLib.parentNode(node);
+    }
+
+    if (e.touches) {
+        e = e.touches[0] || e.changedTouches[0];
     }
 
     let div = node;
@@ -278,7 +286,9 @@ var tdMouseUp = function(e) {
     let index = getBoardIndex(file, rank, div.rotated);
 
     yooLib.removeHandler(div, 'mousemove', tdMouseMove);
+    yooLib.removeHandler(div, 'touchmove', tdMouseMove);
     yooLib.removeHandler(div, 'mouseup', tdMouseUp);
+    yooLib.removeHandler(div, 'touchend', tdMouseUp);
     div.dragDiv.remove();
     delete div.dragTd;
     delete div.dragDiv;
